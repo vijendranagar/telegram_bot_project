@@ -2,20 +2,25 @@ import {
     Entity,
     PrimaryGeneratedColumn,
     Column,
+    Index,
     CreateDateColumn,
   } from 'typeorm';
   
   @Entity('active_subscriptions')
-  export class ActiveSubscription {
+  @Index(['telegram_id'], { unique: true })
+  export class ActiveSubscriptions {
     @PrimaryGeneratedColumn()
     id: number;
-  
-    @Column({ type: 'bigint', unique: true })
+
+   @Column({type: 'text',nullable: true})
+    exchange: string;
+
+    @Column({ type: 'bigint'})
     telegram_id: number;
   
-    @Column({ type: 'text' })
+    @Column({ type: 'text',nullable: true })
     from_address: string;
-  
+     
     @Column({ type: 'boolean', default: true })
     is_active: boolean;
   
@@ -27,7 +32,10 @@ import {
   
     @Column({ type: 'text', nullable: true })
     api_key: string;
-  
+
+    @Column({ type: 'text', nullable: true })
+    api_passphrase: string;
+
     @Column({ type: 'text', nullable: true })
     api_secret: string;
   

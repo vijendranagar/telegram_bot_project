@@ -2,24 +2,27 @@ import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { ActiveSubscription } from './active_subscriptons.entities';
-import { PaymentHistory } from './payments_history.entities';
+import { ActiveSubscriptions } from './entities/active_subscriptons.entities';
+import { PaymentHistory } from './entities/payments_history.entities';
+import { BaseBotServices} from './services/baseBot.service';
+import {ConfigModule} from '@nestjs/config';
+import { DbModule } from './db/db.module';
+import { IbotService } from './services/IBot.interface';
+import { kucoinBotService } from './services/exchange/kucoin/bot.service';
 
 @Module({
   imports: [
-    TypeOrmModule.forRoot({
-      type: 'postgres',
-      host: 'localhost',
-      port: 5432,
-      password: '239073',
-      username: 'postgres',
-      entities: [ActiveSubscription, PaymentHistory],
-      database: 'postgres',
-      synchronize: true,
-      logging: true,
-    }),
+    DbModule,
+    TypeOrmModule.forFeature([ActiveSubscriptions]),
+
+    ConfigModule.forRoot({
+      envFilePath: '.env',
+      isGlobal: true,
+    })
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [AppService,
+     { provide:'IbotService', useClass: process.env.excahnge === 'KUCOIN'
+     ? kucoinBotService : kucoinBotService}]
 })
 export class AppModule {}
