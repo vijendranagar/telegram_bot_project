@@ -9,18 +9,21 @@ import {ConfigModule} from '@nestjs/config';
 import { DbModule } from './db/db.module';
 import { IbotService } from './services/IBot.interface';
 import { kucoinBotService } from './services/exchange/kucoin/bot.service';
+import { botController } from './controllers/bot.controller';
+import { HttpModule, HttpService } from '@nestjs/axios';
+
 
 @Module({
   imports: [
     DbModule,
-    TypeOrmModule.forFeature([ActiveSubscriptions]),
-
+    TypeOrmModule.forFeature([ActiveSubscriptions,PaymentHistory]),
     ConfigModule.forRoot({
       envFilePath: '.env',
       isGlobal: true,
-    })
+    }),
+    HttpModule,
   ],
-  controllers: [AppController],
+  controllers: [AppController,botController],
   providers: [AppService,
      { provide:'IbotService', useClass: process.env.excahnge === 'KUCOIN'
      ? kucoinBotService : kucoinBotService}]

@@ -16,7 +16,8 @@ import { PaymentHistory } from '../entities/payments_history.entities';
         synchronize: true,
         logging: true,
       }),
-       TypeOrmModule.forFeature([ActiveSubscriptions]),
+       TypeOrmModule.forFeature([ActiveSubscriptions,PaymentHistory]),
+       
     ],
     })
     export class DbModule {}

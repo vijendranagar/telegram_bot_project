@@ -20,6 +20,7 @@
     "test:e2e": "jest --config ./test/jest-e2e.json"
   },
   "dependencies": {
+    "@ccmos/nestjs-moment": "^0.1.0",
     "@nestjs/axios": "^3.0.2",
     "@nestjs/bull": "^10.1.1",
     "@nestjs/common": "^10.3.8",
@@ -30,6 +31,7 @@
     "@nestjs/typeorm": "^10.0.2",
     "axios": "^1.6.8",
     "bull": "^4.12.2",
+    "crypto": "^1.0.1",
     "crypto-js": "^4.2.0",
     "dotenv": "^16.4.5",
     "nestjs-telegram": "^1.2.0",

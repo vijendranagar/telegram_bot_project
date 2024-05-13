@@ -7,18 +7,19 @@ import {
   } from 'typeorm';
   
   @Entity('active_subscriptions')
-  @Index(['telegram_id'], { unique: true })
+  @Index(['telegram_id','exchange'],{ unique: true })
   export class ActiveSubscriptions {
     @PrimaryGeneratedColumn()
     id: number;
 
-   @Column({type: 'text',nullable: true})
+   @Column({type: 'text', nullable:true} )
     exchange: string;
 
     @Column({ type: 'bigint'})
     telegram_id: number;
   
-    @Column({ type: 'text',nullable: true })
+    
+    @Column({ type: 'text',nullable:true })
     from_address: string;
      
     @Column({ type: 'boolean', default: true })
