@@ -32,13 +32,13 @@ import {
     payment_id: string;
   
     @Column({ type: 'text', nullable: true })
-    api_key: string;
+    api_key: any;
 
     @Column({ type: 'text', nullable: true })
-    api_passphrase: string;
+    api_passphrase: any;
 
     @Column({ type: 'text', nullable: true })
-    api_secret: string;
+    api_secret: any;
   
     @Column({ type: 'text', nullable: true })
     pair: string;

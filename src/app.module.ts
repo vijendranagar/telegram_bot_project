@@ -11,6 +11,7 @@ import { IbotService } from './services/IBot.interface';
 import { kucoinBotService } from './services/exchange/kucoin/bot.service';
 import { botController } from './controllers/bot.controller';
 import { HttpModule, HttpService } from '@nestjs/axios';
+import { cryptoservice } from './services/encryp_decryp/crypto.service';
 
 
 @Module({
@@ -24,7 +25,7 @@ import { HttpModule, HttpService } from '@nestjs/axios';
     HttpModule,
   ],
   controllers: [AppController,botController],
-  providers: [AppService,
+  providers: [AppService,cryptoservice,
      { provide:'IbotService', useClass: process.env.excahnge === 'KUCOIN'
      ? kucoinBotService : kucoinBotService}]
 })
