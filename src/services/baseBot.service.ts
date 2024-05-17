@@ -661,10 +661,7 @@ export abstract class BaseBotServices implements IbotService {
         exchangeType: exchange,
         accessKey: accessKey,
       };
-      console.log(
-        '🚀 ~ BaseBotServices ~ sendDatatoBubble ~  bubbleData:',
-        bubbleData,
-      );
+
      // console.log('🚀 ~ BaseBotServices ~ startBot ~ bubbleUrl:', bubbleUrl);
       this.logger.info("🚀 ~ BaseBotServices ~ startBot ~ bubbleUrl:",bubbleUrl)
       const bubbleResponse = await this.httpService.axiosRef.post( bubbleUrl, bubbleData, { headers } );
@@ -678,8 +675,9 @@ export abstract class BaseBotServices implements IbotService {
       }
         console.log("🚀 ~ BaseBotServices ~ sendDatatoBubble ~ bubbleResponse.data:", bubbleResponse.data)
     } catch(error) {
+      console.log("🚀 ~ BaseBotServices ~ startBot ~ error:", error)
       this.logger.error("handle the error",error.response)
-      console.log(error.response.data);
+    
     }
       
   //    this.sendDatatoBubble(chatId,telegramId,command);
@@ -753,85 +751,12 @@ export abstract class BaseBotServices implements IbotService {
         console.log(error.response.data);
       }
 
-     // this.sendDatatoBubble(chatId,telegramId,command);
+     
     } catch (error) {
       this.logger.error(`Error in handleStopBot: ${error.response.data}`);
     }
   }
 
-  //method to send the data to bubble 
-  async sendDatatoBubble(chatId:string, telegramId:number,command:string): Promise<void> {
-  
-    const botId = telegramId;
-    const uniqueId = telegramId;
-    let bubbleUrl = null;
-
-    if (command === '/startbot') {
-      bubbleUrl = BUBBLE_URL_STARTBOT;
-    } else if (command === '/stopbot') {
-      bubbleUrl = BUBBLE_URL_STOPBOT;
-    }
-
-    try {
-      const activeSubscription = await this.getUserSubscription(telegramId);
-      if (!activeSubscription) {
-        this.logger.error(
-          `No active subscription found for telegram_id: ${telegramId}`, 
-        );
-        return;
-      }
-
-      const {
-        api_key,
-        api_secret,
-        api_passphrase,
-        pair,
-        interval,
-        offset_range,
-        token_range,
-        exchange,
-      } = activeSubscription;
-  
-
-      const accessKey = 'f7gFzvVfI9';
-      const headers = {
-        'Content-Type': 'application/json',
-      };
-      const bubbleData = {
-        apiKey: api_key,
-        apiSecret: api_secret,
-        pair: pair,
-        interval: interval,
-        offset: offset_range,
-        tradeRange: token_range,
-        chatId: chatId.toString(),
-        telegramId: telegramId.toString(),
-        botId: botId.toString(),
-        uniqueId: uniqueId.toString(),
-        apiPassphrase: api_passphrase,
-        exchangeType: exchange,
-        accessKey: accessKey,
-      };
-      console.log(
-        '🚀 ~ BaseBotServices ~ sendDatatoBubble ~  bubbleData:',
-        bubbleData,
-      );
-      console.log('🚀 ~ BaseBotServices ~ startBot ~ bubbleUrl:', bubbleUrl);
-      this.logger.info("bubbleUrl",bubbleUrl)
-      const bubbleResponse = await this.httpService.axiosRef.post( bubbleUrl, bubbleData, { headers } );
-      if (bubbleResponse.status === 200) {
-        this.logger.info('Bot info is shared to bubble.',);
-      } else {
-        this.logger.error(
-          `Unable to share data to bubble: ${bubbleResponse.statusText}`,
-        );
-      }
-        console.log("🚀 ~ BaseBotServices ~ sendDatatoBubble ~ bubbleResponse.data:", bubbleResponse.data)
-    } catch (error) {
-      this.logger.error("handle the error",error.response)
-      console.log(error.response.data);
-    }
-  }
 
   //method to check wallet balance
   async checkBalance(chatId:string,telegramId:number): Promise<void> {
