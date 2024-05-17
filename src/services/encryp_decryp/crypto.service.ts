@@ -8,7 +8,7 @@ export class cryptoservice {
     private readonly config: ConfigService,
   ) { }
 
-  async encrypt(data: any) {
+  async encrypt(data: string) {
     const iv = crypto.randomBytes(16);
     const cipher = crypto.createCipheriv('aes-256-cbc', Buffer.from(this.encryptionKey), iv);
     let encrypted = cipher.update(data, 'utf-8', 'hex');
@@ -16,7 +16,7 @@ export class cryptoservice {
     return { result: iv.toString('hex') + ':' + encrypted };
   }
 
-  async decrypt(data: any) {
+  async decrypt(data: string) {
     const parts = data.split(':');
     if (parts.length === 2) {
       const iv = Buffer.from(parts[0], 'hex');

@@ -3,7 +3,6 @@ import {
     PrimaryGeneratedColumn,
     Column,
     Index,
-    CreateDateColumn,
   } from 'typeorm';
   
   @Entity('active_subscriptions')
@@ -45,14 +44,12 @@ import {
   
     @Column({ type: 'int', nullable: true })
     interval: number;
-  
-    // Assuming you want to store arrays as JSON strings for simplicity
-    // Adjust according to your actual data storage strategy
+
     @Column({ type: 'jsonb', nullable: true })
-    token_range: any[];
+    token_range: string;
   
     @Column({ type: 'jsonb', nullable: true })
-    offset_range: any[];
+    offset_range: string;
   
     @Column({ type: 'text', nullable: true })
     bot_id: string;

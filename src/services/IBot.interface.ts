@@ -1,8 +1,8 @@
 export interface IbotService {
 
-    handleApiKey(message)
-    startBot(message)
-    stopBot(message)
-    checkBalance(message)
+    handleApiKey(chat_id,telegramId,parts)
+    startBot(chatId,telegram_id,command)
+    stopBot(chat_id,telegramId,command)
+    checkBalance(chat_id,telegramId)
     sendMessageToUser (chatId, message) 
 }
