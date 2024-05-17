@@ -51,7 +51,7 @@ export abstract class BaseBotServices implements IbotService {
       });
     } catch (error) {
       this.logger.error(`Error getting user subscription: ${error.message}`,error.message);
-      throw error;
+      console.error(`Error getting user subscription: ${error.message}`)
     }
   }
 
@@ -85,6 +85,7 @@ export abstract class BaseBotServices implements IbotService {
       }
     } catch (error) {
       this.logger.error(`Error updating subscription status: ${error.message}`,error.message);
+      console.error(`Error updating subscription status: ${error.message}`,error.message)
       throw error;
     }
   }
@@ -142,6 +143,7 @@ export abstract class BaseBotServices implements IbotService {
     const chatId = msg.chat.id;
     const telegram_id = msg.from.id;
     const command = msg.text ? msg.text.split(' ')[0] : null;
+    console.log("🚀 ~ BaseBotServices ~ onRecieveMessage= ~ command:", command)
     const parts = msg.text.split(' ');
 
     if (command === '/start') {
@@ -347,6 +349,7 @@ export abstract class BaseBotServices implements IbotService {
     } 
     catch (error) {
       this.logger.error(`Database error: ${error}`,error);
+      console.log(error)
       return;
     }
     const alreadyUsed = await this.checkTxIdInPayments(txID, chat_id);
@@ -363,6 +366,7 @@ export abstract class BaseBotServices implements IbotService {
           const messageToSend = starMessageTosend;
           await this.bot.sendMessage(chat_id, messageToSend);
           this.logger.info('Verified transaction hash and updated subscription status.' );
+          console.log('Verified transaction hash and updated subscription status.')
         }
       } 
 
@@ -396,6 +400,7 @@ export abstract class BaseBotServices implements IbotService {
             await this.subscriptionRepository.save(activeSubscription);
           }
           this.logger.info('API key, secret and passphrase set successfully.');
+          console.log('API key, secret and passphrase set successfully.');
           await this.bot.sendMessage( chatId,'API key secret and passphrase set successfully. Please set the trading pair using /setpair <pair> (e.g., /setpair BTCUSDT)',
           );
         } 
@@ -406,6 +411,7 @@ export abstract class BaseBotServices implements IbotService {
        catch (error) {
         await this.bot.sendMessage(chatId, 'Invalid format. Please set your API key ,secret and passphrase in the following format:\n/apikey <your_api_key> <your_api_secret> <your_api_passphrase>');
         this.logger.error(error)
+        console.log(error)
       }
     } 
     else {
@@ -430,6 +436,7 @@ export abstract class BaseBotServices implements IbotService {
           await this.subscriptionRepository.save(activeSubscription);
         }
         this.logger.info(`Trading pair set to: ${pair}`);
+        console.log(`Trading pair set to: ${pair}`)
         await this.bot.sendMessage(chatId, `Trading pair set to: ${pair}`);
         await this.bot.sendMessage(chatId, 'Please set the interval in seconds using /setinterval <seconds> (e.g., /setinterval 60)');
       }
@@ -468,6 +475,7 @@ export abstract class BaseBotServices implements IbotService {
             await this.subscriptionRepository.save(activeSubscription);
           }
           this.logger.info(`Interval set to: ${interval} seconds`);
+          console.log(`Interval set to: ${interval} seconds`)
           await this.bot.sendMessage(
             chatId,
             `Interval set to: ${interval} seconds`,
@@ -479,17 +487,12 @@ export abstract class BaseBotServices implements IbotService {
         } catch (error) {
           this.logger.error(`Database error: ${error.message}`, error);
         }
-      } catch (error) {
-        await this.bot.sendMessage(
-          chatId,
-          'Invalid format. Please enter an integer value for the interval.',
-        );
+      }
+       catch (error) {
+        await this.bot.sendMessage(  chatId,  'Invalid format. Please enter an integer value for the interval.' );
       }
     } else {
-      await this.bot.sendMessage(
-        chatId,
-        "Please use setinterval command with format Example : '/setinterval 60'",
-      );
+      await this.bot.sendMessage( chatId, "Please use setinterval command with format Example : '/setinterval 60'");
     }
   }
 
@@ -516,11 +519,13 @@ export abstract class BaseBotServices implements IbotService {
             await this.subscriptionRepository.save(activeSubscription);
           }
           this.logger.info( `Offset range set to: ${minOffsetRange}- ${parts[2]}`);
+          console.log(`Offset range set to: ${minOffsetRange}- ${parts[2]}`)
           await this.bot.sendMessage( chatId, `Offset range set to: ${minOffsetRange}- ${parts[2]}`);
           await this.bot.sendMessage( chatId, 'Please set the token range using /settokenrange <min_range> <max_range> (e.g., /settokenrange 1500 2000)',);
         } 
         catch (error) {
           this.logger.error(`Database error: ${error.message}`, error);
+          console.log(`Database error: ${error.message}`, error)
         }
       } 
       catch (error) {
@@ -556,6 +561,7 @@ export abstract class BaseBotServices implements IbotService {
             await this.subscriptionRepository.save(activeSubscription);
           }
           this.logger.info( `Token range set to: ${minTokenRange}-${maxTokenRange}` );
+          console.log(`Token range set to: ${minTokenRange}-${maxTokenRange}`)
           await this.bot.sendMessage(  chatId, `Token range set to: ${minTokenRange}-${maxTokenRange}`,);
           await this.bot.sendMessage(chatId,'You may now start your bot with /startbot.');
         } 
@@ -662,7 +668,7 @@ export abstract class BaseBotServices implements IbotService {
         accessKey: accessKey,
       };
 
-     // console.log('🚀 ~ BaseBotServices ~ startBot ~ bubbleUrl:', bubbleUrl);
+    
       this.logger.info("🚀 ~ BaseBotServices ~ startBot ~ bubbleUrl:",bubbleUrl)
       const bubbleResponse = await this.httpService.axiosRef.post( bubbleUrl, bubbleData, { headers } );
       if (bubbleResponse.status === 200) {
@@ -734,8 +740,6 @@ export abstract class BaseBotServices implements IbotService {
           botId: botId.toString(),
           accessKey: accessKey,
         };
-    
-        console.log('🚀 ~ BaseBotServices ~ startBot ~ bubbleUrl:', bubbleUrl);
        
         const bubbleResponse = await this.httpService.axiosRef.post( bubbleUrl, bubbleData, { headers } );
         if (bubbleResponse.status === 200) {
@@ -750,8 +754,6 @@ export abstract class BaseBotServices implements IbotService {
         this.logger.error("handle the error",error.response.data)
         console.log(error.response.data);
       }
-
-     
     } catch (error) {
       this.logger.error(`Error in handleStopBot: ${error.response.data}`);
     }
