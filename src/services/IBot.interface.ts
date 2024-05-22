@@ -5,4 +5,5 @@ export interface IbotService {
     stopBot(chat_id,telegramId,command)
     checkBalance(chat_id,telegramId)
     sendMessageToUser (chatId, message) 
+    //getBal(chatId,response)
 }

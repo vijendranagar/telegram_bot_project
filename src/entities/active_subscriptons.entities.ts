@@ -46,10 +46,10 @@ import {
     interval: number;
 
     @Column({ type: 'jsonb', nullable: true })
-    token_range: string;
+    token_range: any[];
   
     @Column({ type: 'jsonb', nullable: true })
-    offset_range: string;
+    offset_range: any[];
   
     @Column({ type: 'text', nullable: true })
     bot_id: string;

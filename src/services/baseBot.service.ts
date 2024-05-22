@@ -22,17 +22,17 @@ dotenv.config();
 export abstract class BaseBotServices implements IbotService {
 
  // private logger = new Logger(BaseBotServices.name);
-  private readonly bot: any;
-  private readonly MINIMUM_WEI: number = 100000000000000000;
  
- 
+ private readonly bot: any;
+ private readonly MINIMUM_WEI: number = 100000000000000000;
  private readonly logger = this.winstonConfig.createLogger()
-  private myMap = new Map<any, any>();
+ private myMap = new Map<any, any>();
+ private exchange = process.env.exchange;
 
   constructor(
-    private readonly winstonConfig: WinstonConfig,
-    private httpService: HttpService,
-    private cryptoService: cryptoservice,
+    public readonly winstonConfig: WinstonConfig,
+    public httpService: HttpService,
+    public cryptoService: cryptoservice,
     @InjectRepository(ActiveSubscriptions)
     private readonly subscriptionRepository: Repository<ActiveSubscriptions>,
     @InjectRepository(PaymentHistory)
@@ -41,13 +41,16 @@ export abstract class BaseBotServices implements IbotService {
   {
     this.bot = new TelegramBot(TG_BOT_TOKEN, { polling: true });
     this.bot.on('message', this.onRecieveMessage);
+
   }
 
   //check if telegram_id exist or not
-  async getUserSubscription(telegramId: number): Promise<ActiveSubscriptions | undefined> {
+  async getUserSubscription(telegramId: number,exchange:string): Promise<ActiveSubscriptions | undefined> {
     try {
       return await this.subscriptionRepository.findOne({
-        where: { telegram_id: telegramId },
+        where: {  
+        telegram_id: telegramId , exchange: exchange  
+       }
       });
     } catch (error) {
       this.logger.error(`Error getting user subscription: ${error.message}`,error.message);
@@ -65,15 +68,16 @@ export abstract class BaseBotServices implements IbotService {
         subscriptionEnd = currentTime;
       }
 
-      const subscription = await this.getUserSubscription(telegramId);
-
+      const subscription = await this.getUserSubscription(telegramId,Exchange);
+//check if the subscription already exists
       if (subscription) {
         subscription.payment_id = paymentId;
         subscription.is_active = isActive;
-        subscription.exchange = Exchange;
+     //   subscription.exchange = Exchange;
         subscription.subscription_end = subscriptionEnd;
         await this.subscriptionRepository.save(subscription);
       } 
+    // create the new subscription
       else {
         const newSubscription = new ActiveSubscriptions();
         newSubscription.telegram_id = telegramId;
@@ -89,7 +93,7 @@ export abstract class BaseBotServices implements IbotService {
       throw error;
     }
   }
- //get use address with the help of transaction id provide by user
+ //get use address with the help of transaction id provide by user and update to payment history
   async getFromAddressByTxId(txId: string): Promise<string | false> {
     try {
       const url = `https://api.etherscan.io/api?module=proxy&action=eth_getTransactionByHash&txhash=${txId}&apikey=${ETHERSCAN_API_KEY}`;
@@ -143,9 +147,10 @@ export abstract class BaseBotServices implements IbotService {
     const chatId = msg.chat.id;
     const telegram_id = msg.from.id;
     const command = msg.text ? msg.text.split(' ')[0] : null;
-    console.log("🚀 ~ BaseBotServices ~ onRecieveMessage= ~ command:", command)
-    const parts = msg.text.split(' ');
 
+    console.log(`🚀 ~ BaseBotServices ~ onRecieveMessage= ~ ${command}:" invoked by ${chatId}`)
+    const parts = msg.text.split(' ');
+// commands to run if the user dont have active subscription
     if (command === '/start') {
       await this.handleStart(telegram_id,chatId);
       return;
@@ -158,21 +163,28 @@ export abstract class BaseBotServices implements IbotService {
     }
 
     if (command === '/confirm_payment') {
-      const checkAddress = await this.getUserSubscription(telegram_id)
+      const checkAddress = await this.getUserSubscription(telegram_id,this.exchange)
       if (!checkAddress.from_address) {
         await this.bot.sendMessage(chatId,'Please /setyouraddress <your_wallet_address> before /confirm_payment command' );
         return;
       }
       await this.bot.sendMessage( chatId, 'Please send the transaction ID of your payment.', );
       const response = await this.waitFortxid(chatId);
+     
+      // Test the input against the regex pattern
       this.myMap.set(chatId, response);
+      if(response.startsWith('/')){
+        this.sendMessageToUser(chatId,"Please enter valid transation hash using /confirm_payment command")
+        return;
+      }
+     
       await this.confirmPayment(chatId, response, telegram_id);
       this.myMap.delete(chatId);
       return;
       // Exit the function after handling /confirm_payment command
     }
 
-    const subscription = await this.getUserSubscription(telegram_id);
+    const subscription = await this.getUserSubscription(telegram_id,this.exchange);
     //if the user have active subscription
     if (subscription && subscription.is_active) {
       switch (command) {
@@ -216,40 +228,40 @@ export abstract class BaseBotServices implements IbotService {
       if (this.myMap.has(chatId)) {
         this.sendMessageToUser(chatId, 'Transaction ID received');
       } else
-        this.sendMessageToUser(
-          chatId,
-          'You need an active subscription to access this feature. Please subscribe to continue.',
-        );
+        this.sendMessageToUser( chatId, 'You need an active subscription to access this feature. Please subscribe to continue.' );
     }
   };
   //method to handle start command
-  async handleStart(telegramId:number, chatId:string): Promise<void> {
+  async handleStart(telegramId:number, chatId:string): Promise<void>{
+    // const exchange = process.env.exchange;
  try{
-    const subscription = await this.getUserSubscription(telegramId);
-    if (subscription && subscription.is_active) {
+   const subscription = await this.getUserSubscription(telegramId,this.exchange);
+   if (subscription && subscription.is_active) {
       const messageToSend = alreadySubscMsg;
     
       this.sendMessageToUser(chatId, messageToSend);
-    }
+  }
      else {
-      const exchange = process.env.exchange;
+    //  const exchange = process.env.exchange;
       const myUUID = uuidv4(); //generate payment id
       const paymentId = myUUID;
       const paymentMessage =
         'Welcome to the VoluMint MM Bot! Please send account address using /setyouraddress command with which you will be paying subscription fees of 0.3 ETH. For example /setyouraddress <your_wallet_address>';
       this.sendMessageToUser(chatId, paymentMessage);
-      this.updateSubscriptionStatus( telegramId, paymentId, false, exchange ); // Use chat_id from the message and set subscription status to False
+      this.updateSubscriptionStatus( telegramId, paymentId, false, this.exchange ); // Use chat_id from the message and set subscription status to False
     }
   }catch(error){
-    this.logger.error("error",error)
+    console.log("🚀 ~ BaseBotServices ~ handleStart ~ error:", error)
+    this.logger.error("🚀 ~ BaseBotServices ~ handleStart ~ error:",error)
   }
   }
 
   //method to set users wallet address to database
   async handleFromAddress(telegram_id:number , chat_id:string, parts): Promise<void> {
+   
     if (parts.length === 2) {
       try {
-        const subscription = await this.getUserSubscription(telegram_id);
+        const subscription = await this.getUserSubscription(telegram_id,this.exchange);
         if (!subscription) {
           await this.subscriptionRepository.save({
             telegram_id,
@@ -259,28 +271,20 @@ export abstract class BaseBotServices implements IbotService {
           subscription.from_address = parts[1];
           await this.subscriptionRepository.save(subscription);
         }
-        await this.bot.sendMessage(
-          chat_id,
-          `We have got your address. To use this service pay a subscription fee of 0.3ETH to ${RECEIVER_WALLET_ADDRESS} and send transaction hash using /confirm_payment.`,
-        );
+        await this.bot.sendMessage(chat_id,`We have got your address. To use this service pay a subscription fee of 0.3ETH to ${RECEIVER_WALLET_ADDRESS} and send transaction hash using /confirm_payment.` );
       } catch (error) {
         console.error(`Database error: ${error}`);
         this.logger.error("database error:", error.message)
-        await this.bot.sendMessage( chat_id,
-           'An error occurred while setting your address. Please try again.',
-        );
+        await this.bot.sendMessage( chat_id, 'An error occurred while setting your address. Please try again.');
       }
     } else {
-      await this.bot.sendMessage(
-        chat_id,
-        'Please send a valid from address. For example /setyouraddress <your_address>',
-      );
+      await this.bot.sendMessage(chat_id,'Please send a valid from address. For example /setyouraddress <your_address>' );
     }
   }
 
   //get the transaction id as input from user
   async waitFortxid(chatId: number): Promise<string> {
-
+ try{
     return new Promise((resolve) => {
       // Listen for the user's message
       this.bot.once('message', async (message: any) => {
@@ -290,6 +294,11 @@ export abstract class BaseBotServices implements IbotService {
       });
     });
   }
+  catch(error){
+    console.log("🚀 ~ BaseBotServices ~ waitFortxid ~ error:", error)
+    
+  }
+}
 
   //method to verify transaction with the help of etherscan api
   async verifyTransaction(telegramId: number, tx_id: string): Promise<boolean> {
@@ -298,8 +307,8 @@ export abstract class BaseBotServices implements IbotService {
       const response = await this.httpService.axiosRef.get(url);
       const transaction = response.data.result;
       let fromAddress = null;
-
-      const subscription = await this.getUserSubscription(telegramId)
+    
+      const subscription = await this.getUserSubscription(telegramId,this.exchange)
       if (subscription.from_address) {
         fromAddress = subscription.from_address;
       }
@@ -307,11 +316,8 @@ export abstract class BaseBotServices implements IbotService {
       if (transaction) {
 
         const correctAddress = transaction.to.toLowerCase() ===  RECEIVER_WALLET_ADDRESS.toLowerCase();
-
-        const correctValue = parseInt(transaction.value, 16) >= this.MINIMUM_WEI;
-    
+        const correctValue = parseInt(transaction.value, 16) >= this.MINIMUM_WEI; 
         const correctFromAddress =  transaction.from === fromAddress.toLowerCase();
-  
         return correctAddress && correctValue && correctFromAddress;
       }
     } catch (error) {
@@ -320,7 +326,7 @@ export abstract class BaseBotServices implements IbotService {
     return false;
   }
 
-  //method to update transaction id in payment history table
+  // update transaction id in payment history table
   async updatePaymentByTxId(telegramId: number, txId: string, fromAddress: string): Promise<boolean> {
     const paymentHistory = new PaymentHistory();
     paymentHistory.telegram_id = telegramId;
@@ -338,13 +344,14 @@ export abstract class BaseBotServices implements IbotService {
 
   //method to handle confirm_payment command
   async confirmPayment(chat_id: number, txID: string, telegram_id: number) {
+ 
     if (!txID) {
       await this.bot.sendMessage(chat_id, 'You did not provide a transaction ID. Please send the transaction ID after /confirm_payment command.' );
       return;
     }
     let fromAddress: string;
     try {
-      const subscription = await this.getUserSubscription(telegram_id);
+      const subscription = await this.getUserSubscription(telegram_id,this.exchange);
       fromAddress = subscription.from_address;
     } 
     catch (error) {
@@ -377,15 +384,17 @@ export abstract class BaseBotServices implements IbotService {
     }
   }
 
+
 //method to parse api keys to database
   async handleApiKey(chatId:string, telegramId:number, parts): Promise<void> {
+ 
     if (parts.length === 4) {
       try {
         const apiKey = this.cryptoService.encrypt(parts[1]);
         const apiSecret = this.cryptoService.encrypt(parts[2]);
         const apiPassphrase = parts[3];
         try {
-          const activeSubscription = await this.getUserSubscription(telegramId);
+          const activeSubscription = await this.getUserSubscription(telegramId,this.exchange);
           if (!activeSubscription) {
             await this.subscriptionRepository.save({
               telegram_id: telegramId,
@@ -421,11 +430,11 @@ export abstract class BaseBotServices implements IbotService {
 
   //method to setpair to database
   async handleSetPair(chatId:string,telegramId:number,parts): Promise<void> {
-   
+    
     if (parts.length === 2) {
       const pair = parts[1].toUpperCase();
       try {
-        const activeSubscription = await this.getUserSubscription(telegramId);
+        const activeSubscription = await this.getUserSubscription(telegramId,this.exchange);
         if (!activeSubscription) {
           await this.subscriptionRepository.save({
             telegram_id: telegramId,
@@ -451,20 +460,19 @@ export abstract class BaseBotServices implements IbotService {
 
   //method to set interval to database
   async handleSetInterval(chatId:string ,telegramId:number,parts): Promise<void> {
+   
 
     if (parts.length === 2) {
       try {
         const interval = parseInt(parts[1], 10);
         // Check if the interval is at least 35
         if (interval < 35) {
-          await this.bot.sendMessage(
-            chatId,
-            'The interval must be at least 35 seconds (e.g., /setinterval 60)',
+          await this.bot.sendMessage( chatId,'The interval must be at least 35 seconds (e.g., /setinterval 60)',
           );
           return; // Exit the function to prevent further execution
         }
         try {
-          const activeSubscription = await this.getUserSubscription(telegramId);
+          const activeSubscription = await this.getUserSubscription(telegramId,this.exchange);
           if (!activeSubscription) {
             await this.subscriptionRepository.save({
               telegram_id: telegramId,
@@ -498,24 +506,26 @@ export abstract class BaseBotServices implements IbotService {
 
   //method to setoffsetrange to database
   async handleSetOffset(chatId:string,telegramId:number,parts): Promise<void> {
+    
     if (parts.length === 3) {
       try {
-        const minOffsetRange = parseFloat(parts[1]);
-        const maxOffsetRange = parseFloat(parts[2]);
+       const minOffsetRange = (parts[1]);
+       const  maxOffsetRange = (parts[2]);
+
         if (minOffsetRange >= maxOffsetRange) {
           await this.bot.sendMessage(chatId, 'Invalid offset range. Ensure the minimum volume is less than the maximum volume.',);
           return;
         }
         try {
-          const activeSubscription = await this.getUserSubscription(telegramId);
+          const activeSubscription = await this.getUserSubscription(telegramId,this.exchange);
           if (!activeSubscription) {
             await this.subscriptionRepository.save({
               telegram_id: telegramId,
-              offset_range: [minOffsetRange, maxOffsetRange].toString(),
+              offset_range: [minOffsetRange, maxOffsetRange],
             });
           } else {
             const offsetRange = [minOffsetRange, maxOffsetRange];
-            activeSubscription.offset_range = offsetRange.toString();
+            activeSubscription.offset_range = offsetRange;
             await this.subscriptionRepository.save(activeSubscription);
           }
           this.logger.info( `Offset range set to: ${minOffsetRange}- ${parts[2]}`);
@@ -550,14 +560,14 @@ export abstract class BaseBotServices implements IbotService {
           return;
         }
         try {
-          const activeSubscription = await this.getUserSubscription(telegramId);
+          const activeSubscription = await this.getUserSubscription(telegramId,this.exchange);
           if (!activeSubscription) {
             await this.subscriptionRepository.save({
               telegram_id: telegramId,
-              token_range: arrayValues.toString(),
+              token_range: arrayValues,
             });
           } else {
-            activeSubscription.token_range = arrayValues.toString();
+            activeSubscription.token_range = arrayValues;
             await this.subscriptionRepository.save(activeSubscription);
           }
           this.logger.info( `Token range set to: ${minTokenRange}-${maxTokenRange}` );
@@ -579,11 +589,12 @@ export abstract class BaseBotServices implements IbotService {
 
   //method to handle startbot command
   async startBot(chatId:string ,telegramId:number,command:string): Promise<void> {
+  
     const botId = telegramId.toString();
     const uniqueId = telegramId.toString();
    
     try {
-      const activeSubscription = await this.getUserSubscription(telegramId);
+      const activeSubscription = await this.getUserSubscription(telegramId,this.exchange);
       if (!activeSubscription) {
         this.logger.error( `No active subscription found for telegram_id: ${telegramId}`);
         return;
@@ -593,6 +604,10 @@ export abstract class BaseBotServices implements IbotService {
 
       await this.subscriptionRepository.save(activeSubscription);
       const {api_key,api_secret,api_passphrase,pair,interval,offset_range,token_range } = activeSubscription;
+     const minRange  =   Number(offset_range[0]).toFixed(6)
+      console.log("🚀 ~ BaseBotServices ~ startBot ~ offset_range[0]:", offset_range[0])
+      const maxRange  =   Number(offset_range[1]).toFixed(8)
+      console.log("🚀 ~ BaseBotServices ~ startBot ~ offset_range[1]:", offset_range[1])
       const type = 'limit';
       const exchangeUrl = URL_STARTBOT;
      
@@ -610,16 +625,19 @@ export abstract class BaseBotServices implements IbotService {
         type: type,
         pair: pair,
         interval: interval,
-        offset_range: offset_range,
+        offset_range:[parseFloat(minRange),parseFloat(maxRange)],
         token_range: token_range,
         bot_id: botId,
         unique_id: uniqueId,
+        chat_id: chatId,
       };
-
+      console.log("🚀 ~ BaseBotServices ~ startBot ~ data:", data)
+ 
       const response = await this.httpService.axiosRef.post(exchangeUrl, data, { headers});
+
       const msg = 'Bot Started. . . ';
       if (response.status === 200) {
-        console.log('🚀 ~ startBot ~ response:', response.data);
+        
         if (response.data.message === msg) {
           this.logger.info( `Bot started with bot id: ${botId} and unique id: ${uniqueId}. Generating volume...`);
           // Send messages to the user
@@ -657,8 +675,8 @@ export abstract class BaseBotServices implements IbotService {
         apiSecret: api_secret,
         pair: pair,
         interval: interval,
-        offset: offset_range,
-        tradeRange: token_range,
+        offset: offset_range.toString(),
+        tradeRange: token_range.toString(),
         chatId: chatId.toString(),
         telegramId: telegramId.toString(),
         botId: botId.toString(),
@@ -667,8 +685,7 @@ export abstract class BaseBotServices implements IbotService {
         exchangeType: exchange,
         accessKey: accessKey,
       };
-
-    
+      console.log("🚀 ~ BaseBotServices ~ startBot ~ bubbleData:", bubbleData)
       this.logger.info("🚀 ~ BaseBotServices ~ startBot ~ bubbleUrl:",bubbleUrl)
       const bubbleResponse = await this.httpService.axiosRef.post( bubbleUrl, bubbleData, { headers } );
       if (bubbleResponse.status === 200) {
@@ -679,7 +696,7 @@ export abstract class BaseBotServices implements IbotService {
           `Unable to share data to bubble: ${bubbleResponse.statusText}`,
         );
       }
-        console.log("🚀 ~ BaseBotServices ~ sendDatatoBubble ~ bubbleResponse.data:", bubbleResponse.data)
+       
     } catch(error) {
       console.log("🚀 ~ BaseBotServices ~ startBot ~ error:", error)
       this.logger.error("handle the error",error.response)
@@ -688,7 +705,7 @@ export abstract class BaseBotServices implements IbotService {
       
   //    this.sendDatatoBubble(chatId,telegramId,command);
     } catch (error) {
-      this.logger.error(`Error in handleStartBot: ${error.response.data}`);
+      this.logger.error(`Error in handleStartBot: ${error.response}`);
     }
   }
 
@@ -762,9 +779,8 @@ export abstract class BaseBotServices implements IbotService {
 
   //method to check wallet balance
   async checkBalance(chatId:string,telegramId:number): Promise<void> {
-   
     try {
-      const activeSubscription = await this.getUserSubscription(telegramId);
+      const activeSubscription = await this.getUserSubscription(telegramId,this.exchange);
       if (!activeSubscription) {
          this.logger.error(`No active subscription found for telegram_id: ${telegramId}` );
         return;
@@ -781,19 +797,32 @@ export abstract class BaseBotServices implements IbotService {
         apiSecret: api_secret,
         apiPassphrase: api_passphrase,
       };
-
+     
       const response = await this.httpService.axiosRef.post(url, data, {headers});
-      if (response.status === 200) {
-        const balances = response.data.data;
-        this.logger.info('🚀 ~ checkBalance ~  balances:', balances);
-        let message = 'Your Balances:\n';
-        balances.forEach((item) => {
-          message += `Currency: ${item.currency}\nType: ${item.type}\nBalance: ${item.balance}\nAvailable: ${item.available}\nHolds: ${item.holds}\n\n`;
-        });
-        //show balance to user
-        this.bot.sendMessage(chatId, message);
-        this.logger.info(`Balance info : ${JSON.stringify(balances)}`);
-      } else {
+     
+      if (response.status === 200) { 
+     
+         await this.getBal(chatId,response)
+       
+      
+
+     //   const balances = response.data.data[0].details;
+     //   console.log("🚀 ~ BaseBotServices ~ checkBalance ~ balances:", balances)
+//
+     //   if(balances){
+     //   this.logger.info('🚀 ~ checkBalance ~  balances:', balances);
+     //   let message = 'Your Balances:\n';
+     //   balances.forEach((item) => {
+     //     message += `Currency: ${item.ccy}\nTotal Balance: ${item.cashBal}\navailable Balance: ${item.availBal}\nHolds: ${item.frozenBal}\n\n`;
+     //   });
+    //    //show balance to user
+    //    this.sendMessageToUser(chatId, message);
+   //     this.logger.info(`Balance info : ${JSON.stringify(balances)}`);
+   //   } else{
+   //     this.sendMessageToUser(chatId,response.data.message + ': Please set valid API key, API Secret and API passphrase to check balances');  
+   //   }
+      } 
+      else {
         console.error(`Request failed with status code ${response.status}.`);
         this.bot.sendMessage( chatId,`Could not fetch balances, please try again.\n${response.data.message}` );
       }
@@ -802,6 +831,8 @@ export abstract class BaseBotServices implements IbotService {
       throw error;
     }
   }
+  async getBal(chatId,response){}
+
 
  //method to send the data to bubble 
   sendMessageToUser = (chatId: string, message: string) => {

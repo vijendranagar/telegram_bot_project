@@ -1,13 +1,15 @@
 import { Injectable, CanActivate, ExecutionContext } from '@nestjs/common';
-import { TGBOT_SECRET } from 'config/constants';
+import { AUTH_KEY } from 'config/constants';
 
 @Injectable()
 export class authGuard implements CanActivate {
-  private readonly secretKey = TGBOT_SECRET;
+  private readonly secretKey = AUTH_KEY;
 
   canActivate(context: ExecutionContext): boolean {
     const request = context.switchToHttp().getRequest();
-    const apiKey = request.headers['api_secret'];
+    console.log("🚀 ~ authGuard ~ canActivate ~ request:", request.headers)
+    const apiKey = request.headers['auth-key'];
+    console.log("🚀 ~ authGuard ~ canActivate ~ apiKey:", apiKey)
 
     // Check if the API key is present and matches the secret key
     if (apiKey === this.secretKey) {

@@ -13,6 +13,7 @@ import { botController } from './controllers/bot.controller';
 import { HttpModule, HttpService } from '@nestjs/axios';
 import { cryptoservice } from './services/encryp_decryp/crypto.service';
 import { WinstonConfig } from './services/Logger/winstone.config';
+import {okxBotService} from './services/exchange/okx/bot.service'
 
 
 @Module({
@@ -27,7 +28,10 @@ import { WinstonConfig } from './services/Logger/winstone.config';
   ],
   controllers: [AppController,botController],
   providers: [AppService,cryptoservice,WinstonConfig,
-     { provide:'IbotService', useClass: process.env.excahnge === 'KUCOIN'
-     ? kucoinBotService : kucoinBotService}]
+     { provide:'IbotService', 
+     useClass: 
+     process.env.exchange ==='KUCOIN'? kucoinBotService:
+    process.env.exchange ==='OKX'? okxBotService : kucoinBotService}],
+     exports: [WinstonConfig]
 })
 export class AppModule {}
