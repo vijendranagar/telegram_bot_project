@@ -5,7 +5,6 @@ import { BaseBotServices } from '../../baseBot.service';
 export class kucoinBotService extends BaseBotServices
 {
     async getBal(chatId,response){
-        console.log('hello worl @KUCOIN')
         const balances = response.data.data;
         if(balances){
         //  this.logger.info('🚀 ~ checkBalance ~  balances:', balances);

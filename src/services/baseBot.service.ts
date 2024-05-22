@@ -379,7 +379,7 @@ export abstract class BaseBotServices implements IbotService {
 
       else {
         this.updateSubscription(telegram_id, false);
-        await this.bot.sendMessage(chat_id, 'Transaction hash validation failed. Please share valid tx_hash. from_address not matched!', );
+        await this.bot.sendMessage(chat_id, 'Transaction hash validation failed. Please share valid tx_hash.', );
       }
     }
   }
@@ -604,10 +604,10 @@ export abstract class BaseBotServices implements IbotService {
 
       await this.subscriptionRepository.save(activeSubscription);
       const {api_key,api_secret,api_passphrase,pair,interval,offset_range,token_range } = activeSubscription;
-     const minRange  =   Number(offset_range[0]).toFixed(6)
-      console.log("🚀 ~ BaseBotServices ~ startBot ~ offset_range[0]:", offset_range[0])
-      const maxRange  =   Number(offset_range[1]).toFixed(8)
-      console.log("🚀 ~ BaseBotServices ~ startBot ~ offset_range[1]:", offset_range[1])
+     const minRange  =   parseFloat(offset_range[0])
+      console.log("🚀 ~ BaseBotServices ~ startBot ~ offset_range[0]:", minRange)
+      const maxRange  =  parseFloat(offset_range[1])
+      console.log("🚀 ~ BaseBotServices ~ startBot ~ offset_range[1]:", maxRange)
       const type = 'limit';
       const exchangeUrl = URL_STARTBOT;
      
@@ -625,13 +625,13 @@ export abstract class BaseBotServices implements IbotService {
         type: type,
         pair: pair,
         interval: interval,
-        offset_range:[parseFloat(minRange),parseFloat(maxRange)],
+        offset_range:[(minRange),(maxRange)],
         token_range: token_range,
         bot_id: botId,
         unique_id: uniqueId,
         chat_id: chatId,
       };
-      console.log("🚀 ~ BaseBotServices ~ startBot ~ data:", data)
+  //    console.log("🚀 ~ BaseBotServices ~ startBot ~ data:", data)
  
       const response = await this.httpService.axiosRef.post(exchangeUrl, data, { headers});
 
@@ -639,6 +639,7 @@ export abstract class BaseBotServices implements IbotService {
       if (response.status === 200) {
         
         if (response.data.message === msg) {
+          console.log("response data:",response.data)
           this.logger.info( `Bot started with bot id: ${botId} and unique id: ${uniqueId}. Generating volume...`);
           // Send messages to the user
           this.sendMessageToUser(chatId, 'Bot Started!! Generating volume..');
