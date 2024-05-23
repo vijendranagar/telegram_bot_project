@@ -24,6 +24,7 @@ export class botController {
       return 'Received order info.';
     } catch (error) {
       this.logger.error(error);
+      console.log("🚀 ~ botController ~ receiveData ~ error:", error)
       return 'An error occurred while processing your request.';
     }
 
@@ -34,7 +35,6 @@ export class botController {
   async stopBotMessage(@Body() data): Promise<string> {
 
     try {
-      
       const chatId = data.chat_id;
       const message = data.message;
       await this.IBotService.sendMessageToUser(chatId, `Bot Stopped : ${message}`);
@@ -42,6 +42,7 @@ export class botController {
       console.log(`SENT MESSAGE --> Order Info : ${message} invoked by :${chatId}`)
       return 'Notification Received!';
     } catch (error) {
+      console.log("🚀 ~ botController ~ stopBotMessage ~ error:", error)
       this.logger.error(error);
       return 'An error occurred while processing your request.';
     }

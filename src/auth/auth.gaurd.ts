@@ -5,7 +5,7 @@ import { AUTH_KEY } from 'config/constants';
 export class authGuard implements CanActivate {
   private readonly secretKey = AUTH_KEY;
 
-  canActivate(context: ExecutionContext): boolean {
+ async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
     console.log("🚀 ~ authGuard ~ canActivate ~ request:", request.headers)
     const apiKey = request.headers['auth-key'];
