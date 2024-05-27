@@ -274,6 +274,7 @@ export abstract class BaseBotServices implements IbotService {
             telegram_id,
             from_address: parts[1],
             exchange: this.exchange,
+            is_active:false
           });
         } else {
           subscription.from_address = parts[1];
@@ -476,10 +477,14 @@ export abstract class BaseBotServices implements IbotService {
 
     if (parts.length === 2) {
       try {
-        if(!Number.isFinite(parseInt(parts[1]))){
-          this.sendMessageToUser(chatId,"Please Provide Valid interval")
-          return;
-        }
+        const isValidNumber = (value) => {
+          const regex = /^-?\d+(\.\d+)?$/;
+          return regex.test(value) && !isNaN(parseFloat(value));
+      }
+      if (!isValidNumber(parts[1])) {
+        this.sendMessageToUser(chatId, "Invalid command values. Please set the interval in seconds using /setinterval <seconds> (e.g., /setinterval 60)");
+        return;
+    }
         const interval = parseInt(parts[1], 10);
         // Check if the interval is at least 35
         if (interval < 35) {
@@ -525,20 +530,20 @@ export abstract class BaseBotServices implements IbotService {
   async handleSetOffset(chatId:string,telegramId:number,parts): Promise<void> {
     
     if (parts.length === 3) {
-      try {
-        if(!Number.isFinite(parseFloat(parts[1]))){
-          this.sendMessageToUser(chatId,"Invalid command Values. Use: /settokenrange <min_token_range> <max_token_range> (e.g., /settokenrange 1500 2000)")
-          return;
-        }
-        if(!Number.isFinite(parseFloat(parts[2]))){
-         this.sendMessageToUser(chatId,"Invalid command Values. Use: /settokenrange <min_token_range> <max_token_range> (e.g., /settokenrange 1500 2000)")
-         return;
-        }
-       const minOffsetRange = (parts[1]);
+      const minOffsetRange = parts[1];
      
-       const  maxOffsetRange = (parts[2]);
-
-        if (minOffsetRange >= maxOffsetRange) {
+      const  maxOffsetRange = parts[2];
+      try {
+         
+        const isValidNumber = (value) => {
+          const regex = /^-?\d+(\.\d+)?$/;
+          return regex.test(value) && !isNaN(parseFloat(value));
+      }
+      if (!isValidNumber(minOffsetRange) || !isValidNumber(maxOffsetRange)) {
+        this.sendMessageToUser(chatId, "Invalid command values. Use: /setoffsetrange <min_offset_range> <max_offset_range> (e.g., /setoffsetrange -0.000003 0.0000004)");
+        return;
+    }
+   if (minOffsetRange >= maxOffsetRange) {
           await this.bot.sendMessage(chatId, 'Invalid offset range. Ensure the minimum volume is less than the maximum volume.',);
           return;
         }
@@ -579,14 +584,14 @@ export abstract class BaseBotServices implements IbotService {
       try {
         const minTokenRange = parseFloat(parts[1]);
         const maxTokenRange = parseFloat(parts[2]);
-       if(!Number.isFinite(minTokenRange)){
-         this.sendMessageToUser(chatId,"Invalid command Values. Use: /settokenrange <min_token_range> <max_token_range> (e.g., /settokenrange 1500 2000)")
-         return;
-       }
-       if(!Number.isFinite(maxTokenRange)){
-        this.sendMessageToUser(chatId,"Invalid command Values. Use: /settokenrange <min_token_range> <max_token_range> (e.g., /settokenrange 1500 2000)")
+        const isValidNumber = (value) => {
+          const regex = /^-?\d+(\.\d+)?$/;
+          return regex.test(value) && !isNaN(parseFloat(value));
+      }
+      if (!isValidNumber(minTokenRange) || !isValidNumber(maxTokenRange)) {
+        this.sendMessageToUser(chatId, "Invalid command values. Use: /settokenrange <min_token_range> <max_token_range> (e.g., /settokenrange 1500 2000)");
         return;
-       }
+    }
         const arrayValues = [minTokenRange, maxTokenRange];
 
         if (minTokenRange >= maxTokenRange) {
