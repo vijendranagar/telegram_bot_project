@@ -5,7 +5,7 @@ import {
     Index,
   } from 'typeorm';
   
-  @Entity('active_subscriptions')
+  @Entity('all_subscriptions')
   @Index(['telegram_id','exchange'],{ unique: true })
   export class ActiveSubscriptions {
     @PrimaryGeneratedColumn()

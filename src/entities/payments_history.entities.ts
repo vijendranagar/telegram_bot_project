@@ -5,7 +5,7 @@ import {
     CreateDateColumn,
   } from 'typeorm';
   
-  @Entity('payments_history')
+  @Entity('all_payments')
   export class PaymentHistory {
     @PrimaryGeneratedColumn()
     id: number;

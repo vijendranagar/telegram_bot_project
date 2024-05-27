@@ -273,6 +273,7 @@ export abstract class BaseBotServices implements IbotService {
           await this.subscriptionRepository.save({
             telegram_id,
             from_address: parts[1],
+            exchange: this.exchange,
           });
         } else {
           subscription.from_address = parts[1];
