@@ -6,7 +6,7 @@ import { PaymentHistory } from 'src/entities/payments_history.entities';
 import { InjectRepository } from '@nestjs/typeorm';
 import { IbotService } from './IBot.interface';
 import { v4 as uuidv4 } from 'uuid';
-import { SUBSCRIPTION_DURATION,TG_BOT_TOKEN,RECEIVER_WALLET_ADDRESS,ETHERSCAN_API_KEY, accessToken, refreshToken} from 'config/constants';
+import { SUBSCRIPTION_DURATION,TG_BOT_TOKEN,RECEIVER_WALLET_ADDRESS,ETHERSCAN_API_KEY, accessToken, refreshToken,bubbleAccessKey} from 'config/constants';
 import * as TelegramBot from 'node-telegram-bot-api';
 import { HttpService } from '@nestjs/axios';
 import { cryptoservice } from './encryp_decryp/crypto.service';
@@ -15,7 +15,7 @@ import { WinstonConfig } from './Logger/winstone.config';
 import * as dotenv from 'dotenv';
 import * as moment from 'moment';
 import { URL_STOPBOT,URL_WALLET_INFO,URL_STARTBOT,BUBBLE_URL_STARTBOT,BUBBLE_URL_STOPBOT} from 'config/constants';
-import { alreadySubscMsg,starMessageTosend } from 'src/constants/constant';
+import { starMessageTosend } from 'src/constants/constant';
 dotenv.config();
 
 @Injectable()
@@ -23,20 +23,20 @@ export abstract class BaseBotServices implements IbotService {
 
  // private logger = new Logger(BaseBotServices.name);
  
- private readonly bot: any;
- private readonly MINIMUM_WEI: number = 100000000000000000;
- private readonly logger = this.winstonConfig.createLogger()
- private myMap = new Map<any, any>();
- private exchange = process.env.exchange;
+ public readonly bot: any;
+ public readonly MINIMUM_WEI: number = 100000000000000000;
+ public readonly logger = this.winstonConfig.createLogger()
+ public myMap = new Map<any, any>();
+ public exchange = process.env.exchange;
 
   constructor(
     public readonly winstonConfig: WinstonConfig,
     public httpService: HttpService,
     public cryptoService: cryptoservice,
     @InjectRepository(ActiveSubscriptions)
-    private readonly subscriptionRepository: Repository<ActiveSubscriptions>,
+    public readonly subscriptionRepository: Repository<ActiveSubscriptions>,
     @InjectRepository(PaymentHistory)
-    private readonly paymentsHistoryRepository: Repository<PaymentHistory>,
+    public readonly paymentsHistoryRepository: Repository<PaymentHistory>,
   ) 
   {
     this.bot = new TelegramBot(TG_BOT_TOKEN, { polling: true });
@@ -164,7 +164,9 @@ export abstract class BaseBotServices implements IbotService {
     }
 
     if (command === '/confirm_payment') {
+    try{
       const checkAddress = await this.getUserSubscription(telegram_id,this.exchange)
+      console.log("🚀 ~ BaseBotServices ~ onRecieveMessage= ~ checkAddress:", checkAddress)
       if (!checkAddress.from_address) {
         await this.bot.sendMessage(chatId,'Please /setyouraddress <your_wallet_address> before /confirm_payment command' );
         return;
@@ -182,6 +184,10 @@ export abstract class BaseBotServices implements IbotService {
       await this.confirmPayment(chatId, response, telegram_id);
       this.myMap.delete(chatId);
       return;
+    }catch(error){
+      console.log("🚀 ~ BaseBotServices ~ onRecieveMessage= ~ error:", error)
+      
+    }
       // Exit the function after handling /confirm_payment command
     }
 
@@ -238,7 +244,8 @@ export abstract class BaseBotServices implements IbotService {
  try{
    const subscription = await this.getUserSubscription(telegramId,this.exchange);
    if (subscription && subscription.is_active) {
-      const messageToSend = alreadySubscMsg;
+      const messageToSend = starMessageTosend;
+      this.sendMessageToUser(chatId, "You are already subscribed and can use the bot")
       this.sendMessageToUser(chatId, messageToSend);
   }
      else {
@@ -374,6 +381,7 @@ export abstract class BaseBotServices implements IbotService {
         const subscriptionUpdated = await this.updateSubscription(telegram_id, true );
         if (subscriptionUpdated) {
           const messageToSend = starMessageTosend;
+          await this.bot.sendMessage(chat_id, "Your subscription is now active. You may initialise your service with /apikey command. For example: /apikey <api_key> <api_secret>");
           await this.bot.sendMessage(chat_id, messageToSend);
           this.logger.info('Verified transaction hash and updated subscription status.' );
           console.log('Verified transaction hash and updated subscription status.')
@@ -467,6 +475,10 @@ export abstract class BaseBotServices implements IbotService {
 
     if (parts.length === 2) {
       try {
+        if(!Number.isFinite(parseInt(parts[1]))){
+          this.sendMessageToUser(chatId,"Please Provide Valid interval")
+          return;
+        }
         const interval = parseInt(parts[1], 10);
         // Check if the interval is at least 35
         if (interval < 35) {
@@ -474,6 +486,7 @@ export abstract class BaseBotServices implements IbotService {
           );
           return; // Exit the function to prevent further execution
         }
+        
         try {
           const activeSubscription = await this.getUserSubscription(telegramId,this.exchange);
           if (!activeSubscription) {
@@ -512,7 +525,16 @@ export abstract class BaseBotServices implements IbotService {
     
     if (parts.length === 3) {
       try {
+        if(!Number.isFinite(parseFloat(parts[1]))){
+          this.sendMessageToUser(chatId,"Invalid command Values. Use: /settokenrange <min_token_range> <max_token_range> (e.g., /settokenrange 1500 2000)")
+          return;
+        }
+        if(!Number.isFinite(parseFloat(parts[2]))){
+         this.sendMessageToUser(chatId,"Invalid command Values. Use: /settokenrange <min_token_range> <max_token_range> (e.g., /settokenrange 1500 2000)")
+         return;
+        }
        const minOffsetRange = (parts[1]);
+     
        const  maxOffsetRange = (parts[2]);
 
         if (minOffsetRange >= maxOffsetRange) {
@@ -556,6 +578,14 @@ export abstract class BaseBotServices implements IbotService {
       try {
         const minTokenRange = parseFloat(parts[1]);
         const maxTokenRange = parseFloat(parts[2]);
+       if(!Number.isFinite(minTokenRange)){
+         this.sendMessageToUser(chatId,"Invalid command Values. Use: /settokenrange <min_token_range> <max_token_range> (e.g., /settokenrange 1500 2000)")
+         return;
+       }
+       if(!Number.isFinite(maxTokenRange)){
+        this.sendMessageToUser(chatId,"Invalid command Values. Use: /settokenrange <min_token_range> <max_token_range> (e.g., /settokenrange 1500 2000)")
+        return;
+       }
         const arrayValues = [minTokenRange, maxTokenRange];
 
         if (minTokenRange >= maxTokenRange) {
@@ -604,8 +634,8 @@ export abstract class BaseBotServices implements IbotService {
       }
       activeSubscription.unique_id = uniqueId;
       activeSubscription.bot_id = botId;
-
       await this.subscriptionRepository.save(activeSubscription);
+
       const {api_key,api_secret,api_passphrase,pair,interval,offset_range,token_range } = activeSubscription;
       const type = 'limit';
       const exchangeUrl = URL_STARTBOT;
@@ -644,75 +674,76 @@ export abstract class BaseBotServices implements IbotService {
           this.sendMessageToUser(chatId, 'Bot Started!! Generating volume..');
           this.sendMessageToUser(chatId, 'You can stop your bot with /stopbot command.' );
           this.sendMessageToUser(chatId, "For detailed trade information, please check your wallet's trading logs and history.");
+
+          //send data to bubble
+
+          try {
+            const bubbleUrl = BUBBLE_URL_STARTBOT
+            const {
+              api_key,
+              api_secret,
+              api_passphrase,
+              pair,
+              interval,
+              offset_range,
+              token_range,
+              exchange,
+            } = activeSubscription;
+        
+      
+            const accessKey = bubbleAccessKey;
+            const headers = {
+              'Content-Type': 'application/json',
+            };
+            const bubbleData = {
+              apiKey: api_key,
+              apiSecret: api_secret,
+              pair: pair,
+              interval: interval,
+              offset: offset_range? offset_range.toString():"",
+              tradeRange: token_range?token_range.toString():"",
+              chatId: chatId.toString(),
+              telegramId: telegramId.toString(),
+              botId: botId.toString(),
+              uniqueId: uniqueId.toString(),
+              apiPassphrase: api_passphrase,
+              exchangeType: exchange,
+              accessKey: accessKey,
+            };
+            console.log("🚀 ~ BaseBotServices ~ startBot ~ bubbleData:", bubbleData)
+            this.logger.info("🚀 ~ BaseBotServices ~ startBot ~ bubbleUrl:",bubbleUrl)
+            const bubbleResponse = await this.httpService.axiosRef.post( bubbleUrl, bubbleData, { headers } );
+            if (bubbleResponse.status === 200) {
+              this.logger.info('Bot info is shared to bubble.',);
+              console.log('Bot info is shared to bubble.')
+            } else {
+              this.logger.error(
+                `Unable to share data to bubble: ${bubbleResponse.statusText}`,
+              );
+            }
+             
+          } catch(error) {
+            console.log("🚀 ~ BaseBotServices ~ startBot ~ error:", error)
+            this.logger.error("handle the error",error.response)
+          
+          }
+
         } else {
           this.sendMessageToUser(chatId, res.data.message);
         }
       } else {
-        this.sendMessageToUser(chatId,"Bot stopped due to:" + res.data.message);
+        this.sendMessageToUser(chatId,"Bot stopped:" + res.data.message);
         console.error(`Error in starting bot: ${res.statusText}`);
       }
 
     } catch(error){
-        console.log("🚀 ~ BaseBotServices ~ startBot ~ error:", error.message)
+        console.log("🚀 ~ BaseBotServices ~ startBot ~ error:", error)
         this.sendMessageToUser(chatId,"Please provide Valid inputs to start the bot"  );
 
     }
-      // Share bot info with Bubble
-     
-     try {
-      const bubbleUrl = BUBBLE_URL_STARTBOT
-      const {
-        api_key,
-        api_secret,
-        api_passphrase,
-        pair,
-        interval,
-        offset_range,
-        token_range,
-        exchange,
-      } = activeSubscription;
-  
 
-      const accessKey = 'f7gFzvVfI9';
-      const headers = {
-        'Content-Type': 'application/json',
-      };
-      const bubbleData = {
-        apiKey: api_key,
-        apiSecret: api_secret,
-        pair: pair,
-        interval: interval,
-        offset: offset_range? offset_range.toString():"",
-        tradeRange: token_range?token_range.toString():"",
-        chatId: chatId.toString(),
-        telegramId: telegramId.toString(),
-        botId: botId.toString(),
-        uniqueId: uniqueId.toString(),
-        apiPassphrase: api_passphrase,
-        exchangeType: exchange,
-        accessKey: accessKey,
-      };
-      console.log("🚀 ~ BaseBotServices ~ startBot ~ bubbleData:", bubbleData)
-      this.logger.info("🚀 ~ BaseBotServices ~ startBot ~ bubbleUrl:",bubbleUrl)
-      const bubbleResponse = await this.httpService.axiosRef.post( bubbleUrl, bubbleData, { headers } );
-      if (bubbleResponse.status === 200) {
-        this.logger.info('Bot info is shared to bubble.',);
-        console.log('Bot info is shared to bubble.')
-      } else {
-        this.logger.error(
-          `Unable to share data to bubble: ${bubbleResponse.statusText}`,
-        );
-      }
-       
-    } catch(error) {
-      console.log("🚀 ~ BaseBotServices ~ startBot ~ error:", error)
-      this.logger.error("handle the error",error.response)
-    
-    }
-      
-  //    this.sendDatatoBubble(chatId,telegramId,command);
     } catch (error) {
-      console.log("🚀 ~ BaseBotServices ~ startBot ~  error:", error)
+      console.error("🚀 ~ BaseBotServices ~ startBot ~  :", error)
       this.logger.error(`Error in handleStartBot: ${error.response}`);
     }
   }
@@ -722,6 +753,7 @@ export abstract class BaseBotServices implements IbotService {
     const botId = telegramId.toString();
     const uniqueId = telegramId.toString();
     const exchangeUrl = URL_STOPBOT;
+    const  bubbleUrl = BUBBLE_URL_STOPBOT;
   
     const headers = {
       accessToken: accessToken,
@@ -743,6 +775,31 @@ export abstract class BaseBotServices implements IbotService {
           //send messagge to user
           this.sendMessageToUser(chatId, 'Stop initiated.');
           this.sendMessageToUser(chatId, 'Bot Stopped');
+
+          //send data to bubble
+          try{
+            const accessKey = bubbleAccessKey;
+            const headers = {
+              'Content-Type': 'application/json',
+            };
+            const bubbleData = {
+              botId: botId.toString(),
+              accessKey: accessKey,
+            };
+           
+            const bubbleResponse = await this.httpService.axiosRef.post( bubbleUrl, bubbleData, { headers } );
+            if (bubbleResponse.status === 200) {
+              this.logger.info('Bot info is shared to bubble.');
+              console.log("Bot info is shared to bubble")
+            } else {
+              this.logger.error(
+                `Unable to share data to bubble: ${bubbleResponse.statusText}`,
+              );
+            }
+          } catch (error) {
+            this.logger.error("handle the error",error.response.data)
+            console.log(error.response.data);
+          }
         } 
         else {
           this.sendMessageToUser(chatId, response.data.message);
@@ -752,36 +809,13 @@ export abstract class BaseBotServices implements IbotService {
         this.logger.error(`Error in stopping bot: ${response.statusText}`);
       }
 
-//send data to bubble
-     const  bubbleUrl = BUBBLE_URL_STOPBOT;
-    
-  try{
-        const accessKey = 'f7gFzvVfI9';
-        const headers = {
-          'Content-Type': 'application/json',
-        };
-        const bubbleData = {
-          botId: botId.toString(),
-          accessKey: accessKey,
-        };
-       
-        const bubbleResponse = await this.httpService.axiosRef.post( bubbleUrl, bubbleData, { headers } );
-        if (bubbleResponse.status === 200) {
-          this.logger.info('Bot info is shared to bubble.');
-          console.log("Bot info is shared to bubble")
-        } else {
-          this.logger.error(
-            `Unable to share data to bubble: ${bubbleResponse.statusText}`,
-          );
-        }
-      } catch (error) {
-        this.logger.error("handle the error",error.response.data)
-        console.log(error.response.data);
-      }
     } catch (error) {
+      console.error("🚀 ~ BaseBotServices ~ stopBot ~ error:", error)
       this.logger.error(`Error in handleStopBot: ${error.response.data}`);
     }
   }
+
+ 
 
 
   //method to check wallet balance
@@ -810,9 +844,6 @@ export abstract class BaseBotServices implements IbotService {
       if (response.status === 200) { 
      
          await this.getBal(chatId,response)
-       
-      
-
      //   const balances = response.data.data[0].details;
      //   console.log("🚀 ~ BaseBotServices ~ checkBalance ~ balances:", balances)
 //

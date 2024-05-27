@@ -14,6 +14,7 @@ import { HttpModule, HttpService } from '@nestjs/axios';
 import { cryptoservice } from './services/encryp_decryp/crypto.service';
 import { WinstonConfig } from './services/Logger/winstone.config';
 import {okxBotService} from './services/exchange/okx/bot.service'
+import { bybitBotService } from './services/exchange/bybit/bot.service';
 
 
 @Module({
@@ -31,7 +32,8 @@ import {okxBotService} from './services/exchange/okx/bot.service'
      { provide:'IbotService', 
      useClass: 
      process.env.exchange ==='KUCOIN'? kucoinBotService:
-    process.env.exchange ==='OKX'? okxBotService : kucoinBotService}],
+    process.env.exchange ==='OKX'? okxBotService :
+    process.env.exchange ==='BYBIT'? bybitBotService: kucoinBotService}],
      exports: [WinstonConfig]
 })
 export class AppModule {}
