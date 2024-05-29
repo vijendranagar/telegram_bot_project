@@ -18,9 +18,9 @@ export const bubbleAccessKey = process.env.bubbleAccessKey
 
 //URLs------
 
-export const URL_STARTBOT = (exchange === "KUCOIN" ? process.env.KUCOIN_URL_STARTBOT : exchange === "OKX" ? process.env.OKX_URL_STARTBOT : '') || '';
-export const URL_STOPBOT = (exchange === "KUCOIN" ? process.env.KUCOIN_URL_STOPBOT : exchange === "OKX" ? process.env.OKX_URL_STOPBOT: '') || '';
-export const URL_WALLET_INFO = (exchange === "KUCOIN" ? process.env.KUCOIN_URL_WALLET_INFO : exchange === "OKX" ? process.env.OKX_URL_WALLET_INFO: '') || ''; 
+export const URL_STARTBOT = (exchange === "KUCOIN" ? process.env.KUCOIN_URL_STARTBOT : exchange === "OKX" ? process.env.OKX_URL_STARTBOT : exchange === "BYBIT" ? process.env.BYBIT_URL_STARTBOT :'') || '';
+export const URL_STOPBOT = (exchange === "KUCOIN" ? process.env.KUCOIN_URL_STOPBOT : exchange === "OKX" ? process.env.OKX_URL_STOPBOT: exchange === "BYBIT" ? process.env.BYBIT_URL_STOPBOT : '') || '';
+export const URL_WALLET_INFO = (exchange === "KUCOIN" ? process.env.KUCOIN_URL_WALLET_INFO : exchange === "OKX" ? process.env.OKX_URL_WALLET_INFO: exchange === "BYBIT" ? process.env.BYBIT_URL_WALLET_INFO : '') || ''; 
 
 //BUBBLE URLs----------
 
@@ -28,4 +28,4 @@ export const BUBBLE_URL_STARTBOT = process.env.BUBBLE_URL_STARTBOT
 export const BUBBLE_URL_STOPBOT = process.env.BUBBLE_URL_STOPBOT
 export const BUBBLE_URL_STOPBOT_TEST = process.env.BUBBLE_URL_STOPBOT_TEST
 
-export const URL_PREFIX = (exchange === "KUCOIN"? 'volumebot-telegram-kucoin': exchange === "OKX" ? 'volumebot-telegram-okx' :'') || '';
+export const URL_PREFIX = (exchange === "KUCOIN"? 'volumebot-telegram-kucoin': exchange === "OKX" ? 'volumebot-telegram-okx' : exchange === "BYBIT" ? 'volumebot-telegram-bybit' :'') || '';
